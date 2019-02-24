@@ -13,16 +13,15 @@ public class WorkerThread implements Runnable{
 	@Override
 	public void run() {
 		while(true) {
-			if(taskComplete) {
+			if(taskComplete || task == null) {
 				try {
 					wait();
 				}catch(InterruptedException e) {}
-			}else {
-                task.work();
-                taskComplete = true;
-                ThreadPoolManager.getInstance().returnToThreadPool(this);
-            }
-
+			}
+			taskComplete = false;
+			task.work();
+			taskComplete = true;
+			ThreadPoolManager.getInstance().returnThreadToPool(this);
 		}
 	}
 
