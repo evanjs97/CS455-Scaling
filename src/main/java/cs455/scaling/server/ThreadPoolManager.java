@@ -3,28 +3,44 @@ package cs455.scaling.server;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class ThreadPoolManager {
-	private final Queue<Thread> threadPool = new LinkedList<>();
-	int maxThreads;
+public class ThreadPoolManager implements Runnable{
+	private static final ThreadPoolManageer manager;
+	private final LinkedBlockingQueue<WorkerThread> threadPool = new LinkedBlockingQueue<>();
+	private final Queue<Queue<byte[]>> workPool = new LinkedList<byte[]>();
+	private int maxThreads;
+	private int batchSize;
+	private int batchTime;
 
-	public ThreadPoolManager(int maxThreads) {
+	private ThreadPoolManager(int maxThreads, int batchSize, int batchTime) {
 		for(int i = 0; i < maxThreads; i++) {
-			threadPool.add(new Thread());
+			threadPool.add(new WorkerThread(this));
 		}
 		this.maxThreads = maxThreads;
+		this.batchSize = batchSize;
+		this.batchTime = batchTime;
 	}
 
-	public Thread getThreadIfAvailable() {
-		synchronized (threadPool) {
-			if(!threadPool.isEmpty()) {
-				return threadPool.poll();
-			}else return null;
-		}
+	public static getInstance(int maxThreads, int batchSize, int batchTime) {
+		if(manager == null) {
+			manager = new ThreadPoolManager(maxThreads);
+		}else return maanager;
 	}
 
-	public void returnThread(Thread thread) {
-		synchronized (threadPool) {
-			threadPool.add(thread);
+	private Thread getThreadIfAvailable() {
+		return threadPool.poll()
+	}
+
+	private void returnThreadToPool(WorkerThread thread) {
+		threadPool.add(thread);
+	}
+
+	@Override
+	public void run() {
+		while(true) {
+			if(workPool.peek().size() > ) {
+				WorkerThread worker = getThreadIfAvailable();
+				worker.notifyAndStart(new Task());
+			}
 		}
 	}
 }
