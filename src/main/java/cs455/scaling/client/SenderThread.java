@@ -20,9 +20,9 @@ public class SenderThread implements Runnable{
 
 		ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 		while(dataBuffer.hasRemaining()) {
-			synchronized (client.getSocketChannel()) {
+			//synchronized (client.getSocketChannel()) {
 				client.getSocketChannel().write(dataBuffer);
-			}
+			//}
 		}
 	}
 

@@ -6,16 +6,39 @@ import java.security.NoSuchAlgorithmException;
 
 public class Task {
 	private boolean taskComplete = false;
+	private LinkedList<SelectionKey> keys;
 	private byte[][] bytes;
 
-	public Task(byte[][] bytes) {
-		this.bytes = bytes;
+	public Task(LinkedList<SelectionKey key> keys) {
+		this.keys = keys;
 	}
 
+	private byte[] read(SelectionKey key) {
+		ByteBuffer buffer = ByteBuffer.allocate(8000);
+		SocketChannel client = (SocketChannel) key.channel();
+		int read = 0;
+		while(dataBuffer.hasRemaining() && read != -1) {
+			read = client.read(buffer)
+		}
+		return dataBuffer.array();
+	}
+
+	private void send(SelectionKey key, bytes) {
+		SocketChannel client = (SocketChannel) key.channel();
+		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
+		while(buffer.hasRemaining()) {
+			synchronized (client) {
+				client.write(buffer);
+			}
+		}
+	}
 
 	public void work() {
-		for(byte[] arr : bytes) {
-			SHA1FromBytes(arr);
+		for(SelectionKey key : keys) {
+			byte[] dataRead = read(key);
+			String hash = SHA1FromBytes(dataRead);
+
 		}
 	}
 
