@@ -9,7 +9,6 @@ public class Server {
 	private int port;
 	private String hostname;
 
-	private ServerSocketChannel serverChannel;
 	private Selector selector;
 
 	public Server(int port, int threadCount, int batchSize, int batchTime) throws IOException{

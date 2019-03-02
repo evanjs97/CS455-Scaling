@@ -6,6 +6,7 @@ public class WorkerThread implements Runnable{
     private volatile boolean taskComplete = false;
 
 	public WorkerThread() {
+
 	}
 
 
