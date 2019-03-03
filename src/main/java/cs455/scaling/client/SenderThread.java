@@ -19,11 +19,13 @@ public class SenderThread implements Runnable{
 		client.addHash(Client.SHA1FromBytes(data));
 
 		ByteBuffer dataBuffer = ByteBuffer.wrap(data);
-		while(dataBuffer.hasRemaining()) {
-			//synchronized (client.getSocketChannel()) {
-				client.getSocketChannel().write(dataBuffer);
-			//}
-		}
+		System.out.println("Writing to channel");
+		client.getSocketChannel().write(dataBuffer);
+//		while(dataBuffer.hasRemaining()) {
+//			//synchronized (client.getSocketChannel()) {
+//				client.getSocketChannel().write(dataBuffer);
+//			//}
+//		}
 	}
 
 	@Override

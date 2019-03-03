@@ -9,6 +9,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 
@@ -19,14 +20,14 @@ public class Client {
 	private final int messageRate;
 	private final SocketChannel socketChannel;
 	private final Selector selector;
-	private final SenderThread senderThread;
+	private SenderThread senderThread;
 
-	public Client(String serverHost, int serverPort, int messageRate) throws IOException{
+	private Client(String serverHost, int serverPort, int messageRate) throws IOException{
 		this.serverHost = serverHost;
 		this.serverPort = serverPort;
 		this.messageRate = messageRate;
 		selector = Selector.open();
-        SelectionKey key = (SelectionKey) keys.next();
+        //
 		socketChannel = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
 		socketChannel.configureBlocking(false);
 //		socketChannel.connect(new InetSocketAddress(serverHost, serverPort));
@@ -61,18 +62,18 @@ public class Client {
 		return hash1.equals(hash2);
 	}
 
-	private final SocketChannel getSocketChannel() {
+	final SocketChannel getSocketChannel() {
 		return this.socketChannel;
 	}
 
 
-	private void addHash(String hash) {
+	final void addHash(String hash) {
 		synchronized (hashcodes) {
-			this.hashcodes.addLast(hash);
+			this.hashcodes.add(hash);
 		}
 	}
 
-	private static String SHA1FromBytes(byte[] data) {
+	static String SHA1FromBytes(byte[] data) {
 		try {
 			MessageDigest digest = MessageDigest.getInstance("SHA1");
 			byte[] hash = digest.digest(data);
@@ -96,6 +97,7 @@ public class Client {
 			try {
 				Iterator keys = selector.selectedKeys().iterator();
 				while(keys.hasNext()) {
+					SelectionKey key = (SelectionKey) keys.next();
 					if(key.isReadable()) {
 						String data = readData(key);
 						if(hashcodes.remove(data)) {
@@ -118,7 +120,7 @@ public class Client {
 				String serverHost = args[0];
 				int serverPort = Integer.parseInt(args[1]);
 				int messageRate = Integer.parseInt(args[2]);
-
+				System.out.println("Starting up client: Connecting to server " + serverHost + " on port " + serverPort);
 				Client client = new Client(serverHost, serverPort, messageRate);
 				client.runClient();
 			}catch(NumberFormatException nfe) {

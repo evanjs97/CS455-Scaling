@@ -1,43 +1,71 @@
 package cs455.scaling.server;
 
+import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.LinkedList;
 
 public class Task {
 	private boolean taskComplete = false;
-	private LinkedList<SelectionKey> keys;
+	private LinkedList<Job> jobs;
 	private byte[][] bytes;
 
-	public Task(LinkedList<SelectionKey key> keys) {
-		this.keys = keys;
+	public Task(LinkedList<Job> jobs) {
+		this.jobs = jobs;
 	}
 
-	private byte[] read(SelectionKey key) {
+	private byte[] read(Job job) {
 		ByteBuffer buffer = ByteBuffer.allocate(8000);
-		SocketChannel client = (SocketChannel) key.channel();
+		SocketChannel client = job.getSocketChannel();
 		int read = 0;
-		while(dataBuffer.hasRemaining() && read != -1) {
-			read = client.read(buffer)
+		while(buffer.hasRemaining() && read != -1) {
+			try {
+				read = client.read(buffer);
+			}catch (IOException ioe) {
+
+			}
 		}
-		return dataBuffer.array();
+		return buffer.array();
 	}
 
-	private void send(SelectionKey key, bytes) {
+	private void send(SelectionKey key, byte[] bytes) {
 		SocketChannel client = (SocketChannel) key.channel();
 		ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
 		while(buffer.hasRemaining()) {
 			synchronized (client) {
-				client.write(buffer);
+				try {
+					client.write(buffer);
+				}catch(IOException ioe) {
+
+				}
 			}
 		}
 	}
 
+	private void registerClient(Job job) {
+		try {
+			SocketChannel client = job.getServerSocketChannel().accept();
+			client.configureBlocking(false);
+			System.out.println("CLIENT: " + client);
+			client.register(ThreadPoolManager.getInstance().getSelector(), SelectionKey.OP_READ);
+			System.out.println("Client has registered with server.");
+		}catch (IOException ioe) {
+			System.out.println("ERROR: IOException while registering client");
+		}
+	}
+
 	public void work() {
-		for(SelectionKey key : keys) {
-			byte[] dataRead = read(key);
-			String hash = SHA1FromBytes(dataRead);
+		for(Job job : jobs) {
+			if(job.getType() == SelectionKey.OP_ACCEPT) registerClient(job);
+			else {
+				byte[] dataRead = read(job);
+				String hash = SHA1FromBytes(dataRead);
+			}
 
 		}
 	}
