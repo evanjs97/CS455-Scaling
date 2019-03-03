@@ -12,7 +12,6 @@ public class ThreadPoolManager implements Runnable{
 	private int maxThreads;
 	private int batchSize;
 	private int batchTime;
-
 	private long lastBatchRemoved = System.nanoTime();
 
 	private ThreadPoolManager(int maxThreads, int batchSize, int batchTime) {
