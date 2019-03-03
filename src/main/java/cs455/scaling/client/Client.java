@@ -122,7 +122,7 @@ public class Client {
 				long currTime = System.nanoTime();
 				long timeDiff =  (currTime - startTime) / 1000000000;
 				if(timeDiff >= 20) {
-					statistics.log(currTime);
+					statistics.log();
 					startTime = currTime;
 				}
 			}catch(IOException ioe) {

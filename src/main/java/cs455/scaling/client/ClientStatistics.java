@@ -1,6 +1,9 @@
 package cs455.scaling.client;
 
-import java.util.Date;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClientStatistics {
@@ -16,8 +19,10 @@ public class ClientStatistics {
 		messagesSentSinceLastLog.incrementAndGet();
 	}
 
-	public final void log(long time) {
+	public final void log() {
+		LocalDateTime date = LocalDateTime.now();
+		DateTimeFormatter dateFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM);
 		System.out.println(String.format("[%s] Total Sent Count: %d, Total Received Count: %d",
-				new Date(time).toString(), messagesSentSinceLastLog.getAndSet(0), messagesReceivedSinceLastLog.getAndSet(0)));
+				date.format(dateFormat), messagesSentSinceLastLog.getAndSet(0), messagesReceivedSinceLastLog.getAndSet(0)));
 	}
 }

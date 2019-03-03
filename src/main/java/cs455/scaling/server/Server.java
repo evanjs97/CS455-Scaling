@@ -36,9 +36,9 @@ public class Server {
 		thread.start();
 	}
 
-	private void log(long time) {
+	private void log() {
 
-		System.out.println(ThreadPoolManager.getInstance().logAndReset(time));
+		System.out.println(ThreadPoolManager.getInstance().logAndReset());
 	}
 
 
@@ -67,7 +67,7 @@ public class Server {
 			long timeDiff = (endTime - time) / 1000000000;
 			//System.out.println("TIME DIFFERENCE: " + timeDiff);
 			if(timeDiff >= 20) {
-				log(endTime);
+				log();
 				time = endTime;
 			}
 		}
