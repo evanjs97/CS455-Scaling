@@ -11,7 +11,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
+
 
 public class Client {
 	private final HashSet<String> hashcodes = new HashSet<>();
@@ -21,6 +21,8 @@ public class Client {
 	private final SocketChannel socketChannel;
 	private final Selector selector;
 	private SenderThread senderThread;
+	private long startTime;
+	private final ClientStatistics statistics = new ClientStatistics();
 
 	private Client(String serverHost, int serverPort, int messageRate) throws IOException{
 		this.serverHost = serverHost;
@@ -43,12 +45,16 @@ public class Client {
 //		}
 //	}
 
+	void sentMessage() { statistics.sendMessage(); }
+	private void receivedMessage() { statistics.receivedMessage(); }
+
 	private String readData(SelectionKey key) throws IOException {
 		ByteBuffer dataBuffer = ByteBuffer.allocate(40);
 		int read = 0;
 		while(dataBuffer.hasRemaining() && read != -1) {
 			read = socketChannel.read(dataBuffer);
 		}
+		receivedMessage();
 		return new String(dataBuffer.array());
 	}
 
@@ -91,7 +97,8 @@ public class Client {
 		thread.start();
 	}
 
-	public void runClient() {
+	private void runClient() {
+		startTime = System.nanoTime();
 		openSender();
 		while(true) {
 			try {
@@ -100,16 +107,26 @@ public class Client {
 				Iterator keys = selector.selectedKeys().iterator();
 				while(keys.hasNext()) {
 					SelectionKey key = (SelectionKey) keys.next();
+					if(!key.isValid()) {
+						System.out.println("Not Valid: ");
+						continue;
+					}
 					if(key.isReadable()) {
 						String data = readData(key);
-						System.out.println(data);
 						if(hashcodes.remove(data)) {
-							System.out.println("Successfully found hash: " + data);
+							//System.out.println("Successfully found hash: " + data);
 						}
 					}
+					keys.remove();
+				}
+				long currTime = System.nanoTime();
+				long timeDiff =  (currTime - startTime) / 1000000000;
+				if(timeDiff >= 20) {
+					statistics.log(currTime);
+					startTime = currTime;
 				}
 			}catch(IOException ioe) {
-				//System.out.println("IOException: " + ioe);
+				System.out.println("IOException: " + ioe);
 			}
 		}
 	}

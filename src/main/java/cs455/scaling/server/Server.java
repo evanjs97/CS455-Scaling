@@ -15,7 +15,7 @@ public class Server {
 	private final ServerSocketChannel serverChannel;
 	private final Selector selector;
 
-	public Server(int port, int threadCount, int batchSize, int batchTime) throws IOException{
+	public Server(int port, int threadCount, int batchSize, double batchTime) throws IOException{
 		this.port = port;
 		this.serverChannel = ServerSocketChannel.open();
 		System.out.println("opened server socket channel");
@@ -36,8 +36,14 @@ public class Server {
 		thread.start();
 	}
 
+	private void log(long time) {
+
+		System.out.println(ThreadPoolManager.getInstance().logAndReset(time));
+	}
+
 
 	private void listen() {
+		long time = System.nanoTime();
 		while(true) {
 			try {
 				int numKeys = selector.selectNow();
@@ -57,6 +63,13 @@ public class Server {
 			}catch (IOException ioe) {
 
 			}
+			long endTime = System.nanoTime();
+			long timeDiff = (endTime - time) / 1000000000;
+			//System.out.println("TIME DIFFERENCE: " + timeDiff);
+			if(timeDiff >= 20) {
+				log(endTime);
+				time = endTime;
+			}
 		}
 	}
 
@@ -70,7 +83,7 @@ public class Server {
 				int port = Integer.parseInt(args[0]);
 				int threadCount = Integer.parseInt(args[1]);
 				int batchSize = Integer.parseInt(args[2]);
-				int batchTime = Integer.parseInt(args[3]);
+				double batchTime = Double.parseDouble(args[3]);
 				System.out.println("PORT: " + port + " Threads: " + threadCount + " Batch Size: " + batchSize + " Batch Time: " + batchTime);
 				Server server = new Server(port, threadCount, batchSize, batchTime);
 				System.out.println("Starting up server on " + server.hostname + " using port " + server.port);

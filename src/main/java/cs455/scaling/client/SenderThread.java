@@ -17,16 +17,18 @@ public class SenderThread implements Runnable{
 		byte[] data = new byte[8000];
 		new Random().nextBytes(data);
 		String hash = Client.SHA1FromBytes(data);
+		hash = pad(hash, 40);
 		client.addHash(hash);
 
 		ByteBuffer dataBuffer = ByteBuffer.wrap(data);
-		System.out.println("Writing to channel: " + hash);
+		//System.out.println("Writing to channel: " + hash);
 		client.getSocketChannel().write(dataBuffer);
-//		while(dataBuffer.hasRemaining()) {
-//			//synchronized (client.getSocketChannel()) {
-//				client.getSocketChannel().write(dataBuffer);
-//			//}
-//		}
+		client.sentMessage();
+	}
+
+	private static String pad(String hash, int length) {
+		while(hash.length() < length) hash = "0" + hash;
+		return hash;
 	}
 
 	@Override

@@ -37,6 +37,7 @@ public class Task {
 		try {
 			ByteBuffer dataBuffer = ByteBuffer.wrap(hash.getBytes());
 			job.getSocketChannel().write(dataBuffer);
+			//System.out.println("Wrote to channel: " + "   " + hash);
 		}catch (IOException ioe) {
 			System.out.println("Exception while writing to client: " + ioe);
 		}
@@ -61,11 +62,17 @@ public class Task {
 		try {
 			SocketChannel client = job.getServerSocketChannel().accept();
 			client.configureBlocking(false);
-			client.register(ThreadPoolManager.getInstance().getSelector(), SelectionKey.OP_READ);
+			client.register(ThreadPoolManager.getInstance().getSelector(), SelectionKey.OP_READ & ~SelectionKey.OP_ACCEPT);
+			ThreadPoolManager.getInstance().registerClient(client.getLocalAddress().toString());
 			System.out.println("Client has registered with server.");
 		}catch (IOException ioe) {
 			System.out.println("ERROR: IOException while registering client");
 		}
+	}
+
+	private static String pad(String hash, int length) {
+		while(hash.length() < length) hash = "0" + hash;
+		return hash;
 	}
 
 	public void work() {
@@ -75,11 +82,21 @@ public class Task {
 			else {
 				byte[] dataRead = read(job);
 				String hash = SHA1FromBytes(dataRead);
-				System.out.println("Received From Channel: " + hash);
+				hash = pad(hash, 40);
 				write(hash, job);
+				try {
+					ThreadPoolManager.getInstance().incrementMessageCount(job.getSocketChannel().getLocalAddress().toString());
+				}catch (IOException ioe) {
+					System.out.println("Failed to increment message count for client task");
+				}
 			}
+
 			ThreadPoolManager.getInstance().removeKey(job.getKey());
 		}
+	}
+
+	public int numJobs() {
+		return this.jobs.size();
 	}
 
 
