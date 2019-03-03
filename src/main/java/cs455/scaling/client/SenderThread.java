@@ -16,10 +16,11 @@ public class SenderThread implements Runnable{
 	private void writeData() throws IOException {
 		byte[] data = new byte[8000];
 		new Random().nextBytes(data);
-		client.addHash(Client.SHA1FromBytes(data));
+		String hash = Client.SHA1FromBytes(data);
+		client.addHash(hash);
 
 		ByteBuffer dataBuffer = ByteBuffer.wrap(data);
-		System.out.println("Writing to channel");
+		System.out.println("Writing to channel: " + hash);
 		client.getSocketChannel().write(dataBuffer);
 //		while(dataBuffer.hasRemaining()) {
 //			//synchronized (client.getSocketChannel()) {

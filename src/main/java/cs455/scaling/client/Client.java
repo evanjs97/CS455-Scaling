@@ -95,11 +95,14 @@ public class Client {
 		openSender();
 		while(true) {
 			try {
+				int numKeys = selector.selectNow();
+				if(numKeys == 0) continue;
 				Iterator keys = selector.selectedKeys().iterator();
 				while(keys.hasNext()) {
 					SelectionKey key = (SelectionKey) keys.next();
 					if(key.isReadable()) {
 						String data = readData(key);
+						System.out.println(data);
 						if(hashcodes.remove(data)) {
 							System.out.println("Successfully found hash: " + data);
 						}

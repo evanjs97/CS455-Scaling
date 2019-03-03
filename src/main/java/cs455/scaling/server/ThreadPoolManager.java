@@ -105,13 +105,9 @@ public class ThreadPoolManager implements Runnable{
 				long time = System.nanoTime();
 				long timeDifferential = time - lastBatchRemoved;
 				if (curSize >= batchSize || timeDifferential > batchSize) {
-					System.out.println("curSize: " + curSize + " batchSize: " + batchSize);
 					WorkerThread worker = threadPool.poll();
-					System.out.println("Sending notification to thread: ");
-					System.out.println("Size Before: " + jobKeys.size());
 					Task task = new Task(jobKeys.poll());
 					worker.notifyAndStart(task);
-					System.out.println("Size After: " + jobKeys.size());
 //					while(true) {
 //						System.out.println("Worker: " + task.isComplete());
 //					}

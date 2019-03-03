@@ -30,7 +30,6 @@ public class WorkerThread extends Thread{
 
 
 	 final synchronized boolean notifyAndStart(Task task) {
-		System.out.println("Notifying Thread");
 	    if(taskComplete) {
             this.task = task;
             taskComplete = false;

@@ -7,6 +7,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.LinkedList;
 
 public class Task {
@@ -15,7 +16,6 @@ public class Task {
 	private byte[][] bytes;
 
 	public Task(LinkedList<Job> jobs) {
-		System.out.println("Task Created");
 		this.jobs = jobs;
 	}
 
@@ -36,7 +36,6 @@ public class Task {
 	private void write(String hash, Job job) {
 		try {
 			ByteBuffer dataBuffer = ByteBuffer.wrap(hash.getBytes());
-			System.out.println("Writing to channel");
 			job.getSocketChannel().write(dataBuffer);
 		}catch (IOException ioe) {
 			System.out.println("Exception while writing to client: " + ioe);
@@ -62,7 +61,6 @@ public class Task {
 		try {
 			SocketChannel client = job.getServerSocketChannel().accept();
 			client.configureBlocking(false);
-			System.out.println("CLIENT: " + client);
 			client.register(ThreadPoolManager.getInstance().getSelector(), SelectionKey.OP_READ);
 			System.out.println("Client has registered with server.");
 		}catch (IOException ioe) {
@@ -77,6 +75,7 @@ public class Task {
 			else {
 				byte[] dataRead = read(job);
 				String hash = SHA1FromBytes(dataRead);
+				System.out.println("Received From Channel: " + hash);
 				write(hash, job);
 			}
 			ThreadPoolManager.getInstance().removeKey(job.getKey());
@@ -92,9 +91,8 @@ public class Task {
 			return hashInt.toString(16);
 		}catch(NoSuchAlgorithmException nsae) {
 			System.out.println("NO SUCH ALGORITHM!");
-		}finally {
-			return "";
 		}
+		return "";
 	}
 
 	public boolean isComplete() { return this.taskComplete; }
