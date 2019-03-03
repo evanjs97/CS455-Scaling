@@ -9,6 +9,8 @@ public class ThreadPoolManager implements Runnable{
 	private static ThreadPoolManager manager;
 	private final LinkedBlockingQueue<WorkerThread> threadPool = new LinkedBlockingQueue<>();
 	private final ArrayDeque<byte[]> workPool = new ArrayDeque<>();
+
+	private final arrayDeque<SelectionKey> jobKeys = new ArrayDeque<>();
 	private int maxThreads;
 	private int batchSize;
 	private int batchTime;
@@ -44,6 +46,12 @@ public class ThreadPoolManager implements Runnable{
 		}
 	}
 
+	public void addKey(SelectionKey key) {
+		synchronized (jobKeys) {
+			jobKeys.offer(key);
+		}
+	}
+
 	private WorkerThread getThreadIfAvailable() {
 		return threadPool.poll();
 	}
@@ -55,10 +63,11 @@ public class ThreadPoolManager implements Runnable{
 	@Override
 	public void run() {
 		while(true) {
-			if(workPool.size() >= batchSize) {
+			int curSize = jobKeys.size();
+			if(curSize >= batchSize) {
 				WorkerThread worker = threadPool.poll();
 				byte[][] byteRange = new byte[batchSize][];
-				synchronized (workPool) {
+				synchronized (jobKeys) {
 					for (int i = 0; i < batchSize; i++) {
 						byteRange[i] = workPool.poll();
 					}

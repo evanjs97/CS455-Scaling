@@ -13,24 +13,25 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 public class Client {
-	private final LinkedList<String> hashcodes = new LinkedList<>();
+	private final HashSet<String> hashcodes = new HashSet<>();
 	private final String serverHost;
 	private final int serverPort;
 	private final int messageRate;
 	private final SocketChannel socketChannel;
 	private final Selector selector;
+	private final SenderThread senderThread;
 
 	public Client(String serverHost, int serverPort, int messageRate) throws IOException{
 		this.serverHost = serverHost;
 		this.serverPort = serverPort;
 		this.messageRate = messageRate;
 		selector = Selector.open();
-
-		socketChannel = SocketChannel.open();
+        SelectionKey key = (SelectionKey) keys.next();
+		socketChannel = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
 		socketChannel.configureBlocking(false);
-		socketChannel.connect(new InetSocketAddress(serverHost, serverPort));
-		int ops  = socketChannel.validOps();
-		socketChannel.register(selector, SelectionKey.OP_CONNECT);
+//		socketChannel.connect(new InetSocketAddress(serverHost, serverPort));
+//		int ops  = socketChannel.validOps();
+		socketChannel.register(selector, SelectionKey.OP_READ);
 	}
 
 //	private void sendData() throws IOException{
@@ -41,13 +42,13 @@ public class Client {
 //		}
 //	}
 
-	private ByteBuffer readData(SelectionKey key) throws IOException {
-		ByteBuffer dataBuffer = ByteBuffer.allocate(20);
+	private String readData(SelectionKey key) throws IOException {
+		ByteBuffer dataBuffer = ByteBuffer.allocate(40);
 		int read = 0;
 		while(dataBuffer.hasRemaining() && read != -1) {
 			read = socketChannel.read(dataBuffer);
 		}
-		return dataBuffer;
+		return new String(dataBuffer.array());
 	}
 
 	private String bufferHash(ByteBuffer buffer) {
@@ -60,18 +61,18 @@ public class Client {
 		return hash1.equals(hash2);
 	}
 
-	public final SocketChannel getSocketChannel() {
+	private final SocketChannel getSocketChannel() {
 		return this.socketChannel;
 	}
 
 
-	public void addHash(String hash) {
+	private void addHash(String hash) {
 		synchronized (hashcodes) {
 			this.hashcodes.addLast(hash);
 		}
 	}
 
-	public static String SHA1FromBytes(byte[] data) {
+	private static String SHA1FromBytes(byte[] data) {
 		try {
 			MessageDigest digest = MessageDigest.getInstance("SHA1");
 			byte[] hash = digest.digest(data);
@@ -83,25 +84,27 @@ public class Client {
 		return "";
 	}
 
-	private void openSender(int messageRate) {
-
+	private void openSender() {
+		senderThread = new SenderThread(messageRate, this);
+		Thread thread = new Thread(senderThread);
+		thread.start();
 	}
 
 	public void runClient() {
+		openSender();
 		while(true) {
 			try {
 				Iterator keys = selector.selectedKeys().iterator();
 				while(keys.hasNext()) {
-					SelectionKey key = (SelectionKey) keys.next();
-					if(key.isConnectable()) {
-						socketChannel.finishConnect();
-						socketChannel.register(selector, SelectionKey.OP_READ);
-					}else if(key.isReadable()) {
-						readData(key);
+					if(key.isReadable()) {
+						String data = readData(key);
+						if(hashcodes.remove(data)) {
+							System.out.println("Successfully found hash: " + data);
+						}
 					}
 				}
 			}catch(IOException ioe) {
-				System.out.println("IOException: " + ioe);
+				//System.out.println("IOException: " + ioe);
 			}
 		}
 	}
