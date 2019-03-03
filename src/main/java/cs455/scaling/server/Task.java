@@ -10,11 +10,12 @@ import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 
 public class Task {
-	private boolean taskComplete = false;
+	private volatile boolean taskComplete = false;
 	private LinkedList<Job> jobs;
 	private byte[][] bytes;
 
 	public Task(LinkedList<Job> jobs) {
+		System.out.println("Task Created");
 		this.jobs = jobs;
 	}
 
@@ -30,6 +31,16 @@ public class Task {
 			}
 		}
 		return buffer.array();
+	}
+
+	private void write(String hash, Job job) {
+		try {
+			ByteBuffer dataBuffer = ByteBuffer.wrap(hash.getBytes());
+			System.out.println("Writing to channel");
+			job.getSocketChannel().write(dataBuffer);
+		}catch (IOException ioe) {
+			System.out.println("Exception while writing to client: " + ioe);
+		}
 	}
 
 	private void send(SelectionKey key, byte[] bytes) {
@@ -60,13 +71,15 @@ public class Task {
 	}
 
 	public void work() {
+		taskComplete = true;
 		for(Job job : jobs) {
 			if(job.getType() == SelectionKey.OP_ACCEPT) registerClient(job);
 			else {
 				byte[] dataRead = read(job);
 				String hash = SHA1FromBytes(dataRead);
+				write(hash, job);
 			}
-
+			ThreadPoolManager.getInstance().removeKey(job.getKey());
 		}
 	}
 

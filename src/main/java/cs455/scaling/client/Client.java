@@ -122,6 +122,7 @@ public class Client {
 				int messageRate = Integer.parseInt(args[2]);
 				System.out.println("Starting up client: Connecting to server " + serverHost + " on port " + serverPort);
 				Client client = new Client(serverHost, serverPort, messageRate);
+				while(!client.getSocketChannel().isConnected()){}
 				client.runClient();
 			}catch(NumberFormatException nfe) {
 				System.out.println("Error while parsing arguments: " + nfe);

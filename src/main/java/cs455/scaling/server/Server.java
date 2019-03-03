@@ -36,21 +36,21 @@ public class Server {
 		thread.start();
 	}
 
+
 	private void listen() {
 		while(true) {
 			try {
-				selector.select();
+				int numKeys = selector.selectNow();
+				if(numKeys == 0)continue;
 				Iterator<SelectionKey> keyIter = selector.selectedKeys().iterator();
 				while (keyIter.hasNext()) {
 					SelectionKey key = keyIter.next();
 					if (!key.isValid()) continue;
 					if (key.isAcceptable()) {
-						ThreadPoolManager.getInstance().addJob(SelectionKey.OP_ACCEPT, serverChannel);
-					}
-
-					if (key.isReadable()) {
+						ThreadPoolManager.getInstance().addJob(SelectionKey.OP_ACCEPT, serverChannel, key);
+					}else if (key.isReadable()) {
 						SocketChannel channel = (SocketChannel) key.channel();
-						ThreadPoolManager.getInstance().addJob(SelectionKey.OP_READ, channel);
+						ThreadPoolManager.getInstance().addJob(SelectionKey.OP_READ, channel, key);
 					}
 					keyIter.remove();
 				}

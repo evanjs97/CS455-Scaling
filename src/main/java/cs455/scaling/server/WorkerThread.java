@@ -3,27 +3,24 @@ package cs455.scaling.server;
 public class WorkerThread extends Thread{
 
 	private volatile Task task = null;
-    private volatile boolean taskComplete = false;
+    private volatile boolean taskComplete = true;
 
 	public WorkerThread() {
 
 	}
 
-
+	public boolean getComplete() { return this.taskComplete; }
 
 	@Override
-	public void run() {
+	public synchronized void run() {
 		while(true) {
 			if(taskComplete || task == null) {
-				synchronized (this) {
-					try {
-						wait();
-					}catch (InterruptedException ie) {
-
-					}
+				try {
+					wait();
+				}catch (InterruptedException ie) {
+					System.out.println("Thread Interrupted");
 				}
 			}else {
-				taskComplete = false;
 				task.work();
 				taskComplete = true;
 				ThreadPoolManager.getInstance().returnThreadToPool(this);
@@ -32,10 +29,11 @@ public class WorkerThread extends Thread{
 	}
 
 
-	 final boolean notifyAndStart(Task task) {
+	 final synchronized boolean notifyAndStart(Task task) {
 		System.out.println("Notifying Thread");
 	    if(taskComplete) {
             this.task = task;
+            taskComplete = false;
             notifyAll();
             return true;
         }return false;

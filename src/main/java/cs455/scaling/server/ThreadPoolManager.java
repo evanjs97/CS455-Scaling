@@ -4,16 +4,14 @@ import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayDeque;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ThreadPoolManager implements Runnable{
 	private static ThreadPoolManager manager;
 	private final LinkedBlockingQueue<WorkerThread> threadPool = new LinkedBlockingQueue<>();
 	private final ArrayDeque<byte[]> workPool = new ArrayDeque<>();
+	private final HashSet<SelectionKey> acceptedKeys = new HashSet<>();
 
 	private final ArrayDeque<LinkedList<Job>> jobKeys = new ArrayDeque<>();
 	private final int maxThreads;
@@ -55,8 +53,15 @@ public class ThreadPoolManager implements Runnable{
 
 	public final Selector getSelector() { return manager.selector; }
 
-	public void addJob(int type, Channel channel) {
-		//System.out.println("Adding Key: " + key);
+	public void addJob(int type, Channel channel, SelectionKey key) {
+
+		synchronized (acceptedKeys) {
+			if (acceptedKeys.contains(key)) return;
+			else {
+				//if(type == SelectionKey.OP_ACCEPT) System.out.println("Adding Key: " + key);
+				acceptedKeys.add(key);
+			}
+		}
 		synchronized (jobKeys) {
 			if(jobKeys.isEmpty()) jobKeys.push(new LinkedList<Job>());
 			Iterator<LinkedList<Job>> iter = jobKeys.iterator();
@@ -64,13 +69,13 @@ public class ThreadPoolManager implements Runnable{
 			while(iter.hasNext()) {
 				LinkedList<Job> current = iter.next();
 				if(current.size() < batchSize) {
-					current.addLast(new Job(type, channel));
+					current.addLast(new Job(type, channel, key));
 					didAdd = true;
 				}
 			}
 			if(!didAdd) {
 				LinkedList<Job> temp = new LinkedList<>();
-				temp.add(new Job(type, channel));
+				temp.add(new Job(type, channel, key));
 				jobKeys.push(temp);
 			}
 		}
@@ -84,6 +89,12 @@ public class ThreadPoolManager implements Runnable{
 		threadPool.add(thread);
 	}
 
+	public final void removeKey(SelectionKey key) {
+		synchronized (acceptedKeys) {
+			this.acceptedKeys.remove(key);
+		}
+	}
+
 	@Override
 	public void run() {
 		while(true) {
@@ -91,14 +102,20 @@ public class ThreadPoolManager implements Runnable{
 				if (jobKeys.isEmpty() || threadPool.isEmpty()) continue;
 				int curSize = jobKeys.peek().size();
 
-
-				if (curSize >= batchSize) {
+				long time = System.nanoTime();
+				long timeDifferential = time - lastBatchRemoved;
+				if (curSize >= batchSize || timeDifferential > batchSize) {
 					System.out.println("curSize: " + curSize + " batchSize: " + batchSize);
 					WorkerThread worker = threadPool.poll();
 					System.out.println("Sending notification to thread: ");
 					System.out.println("Size Before: " + jobKeys.size());
-					worker.notifyAndStart(new Task(jobKeys.poll()));
+					Task task = new Task(jobKeys.poll());
+					worker.notifyAndStart(task);
 					System.out.println("Size After: " + jobKeys.size());
+//					while(true) {
+//						System.out.println("Worker: " + task.isComplete());
+//					}
+					lastBatchRemoved = System.nanoTime();
 				}
 
 			}
