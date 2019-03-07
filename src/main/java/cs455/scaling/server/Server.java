@@ -25,7 +25,7 @@ public class Server {
 		serverChannel.configureBlocking(false);
 
 		selector = Selector.open();
-		serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+		SelectionKey key = serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 		System.out.println("Registered server with OP_ACCEPT key");
 
 
@@ -45,23 +45,46 @@ public class Server {
 	private void listen() {
 		long time = System.nanoTime();
 		while(true) {
+
 			try {
 				int numKeys = selector.selectNow();
-				if(numKeys == 0)continue;
+//				System.out.println("Running: "  +System.nanoTime());
+				if(numKeys == 0) {
+
+					long endTime = System.nanoTime();
+					long timeDiff = (endTime - time) / 1000000000;
+					if(timeDiff >= 20) {
+//						for(SelectionKey key : selector.selectedKeys()) {
+//							System.out.println("Key: " + key.interestOps());
+//						}
+					}
+					continue;
+				}
+				//System.out.println(numKeys);
 				Iterator<SelectionKey> keyIter = selector.selectedKeys().iterator();
+				//System.out.println("Started While Loop");
 				while (keyIter.hasNext()) {
 					SelectionKey key = keyIter.next();
-					if (!key.isValid()) continue;
-					if (key.isAcceptable()) {
-						ThreadPoolManager.getInstance().addJob(SelectionKey.OP_ACCEPT, serverChannel, key);
-					}else if (key.isReadable()) {
-						SocketChannel channel = (SocketChannel) key.channel();
-						ThreadPoolManager.getInstance().addJob(SelectionKey.OP_READ, channel, key);
+					synchronized (key) {
+						//if (!key.isValid()) continue;
+						//System.out.println(key.attachment());
+						if (!key.isValid() || key.attachment() != null) continue;
+						if (key.isAcceptable()) {
+							key.attach(new Boolean(true));
+							serverChannel.register(selector, key.interestOps() & ~SelectionKey.OP_ACCEPT);
+							ThreadPoolManager.getInstance().addJob(SelectionKey.OP_ACCEPT, serverChannel, key);
+						} else if (key.isReadable()) {
+							key.attach(new Boolean(true));
+							//SocketChannel channel = (SocketChannel) key.channel();
+							ThreadPoolManager.getInstance().addJob(SelectionKey.OP_READ, key.channel(), key);
+						}
 					}
 					keyIter.remove();
 				}
+				selector.selectedKeys().clear();
+				//System.out.println("Finished While Loop");
 			}catch (IOException ioe) {
-
+				System.out.println(ioe);
 			}
 			long endTime = System.nanoTime();
 			long timeDiff = (endTime - time) / 1000000000;

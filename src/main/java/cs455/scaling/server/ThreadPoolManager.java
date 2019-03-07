@@ -1,8 +1,7 @@
 package cs455.scaling.server;
 
-import java.nio.channels.Channel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
+import java.net.Socket;
+import java.nio.channels.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -11,20 +10,29 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ThreadPoolManager implements Runnable{
+	//for running the jobs
 	private static ThreadPoolManager manager;
 	private final LinkedBlockingQueue<WorkerThread> threadPool = new LinkedBlockingQueue<>();
-	private final ArrayDeque<byte[]> workPool = new ArrayDeque<>();
-	private final HashSet<SelectionKey> acceptedKeys = new HashSet<>();
+	private final ArrayDeque<LinkedList<Job>> jobKeys = new ArrayDeque<>();
+	//private final ArrayDeque<byte[]> workPool = new ArrayDeque<>();
+	//private final HashSet<SelectableChannel> acceptedKeys = new HashSet<>();
+
+
+	//statistics for server
 	private final HashMap<String, AtomicInteger> clientThroughput = new HashMap<>();
 	private final LinkedList<String> clients = new LinkedList<>();
+	private long lastBatchRemoved = System.nanoTime();
+	private AtomicInteger messagesSinceLastLog = new AtomicInteger();
 
-	private final ArrayDeque<LinkedList<Job>> jobKeys = new ArrayDeque<>();
+
+	//info about this thread pool manager
 	private final int maxThreads;
 	private final int batchSize;
 	private final long batchTime;
 	private final Selector selector;
-	private long lastBatchRemoved = System.nanoTime();
-	private AtomicInteger messagesSinceLastLog = new AtomicInteger();
+
+	//used to immediately register new clients (avoid waiting batchTime)
+	private boolean isNewConnection = false;
 
 	private ThreadPoolManager(int maxThreads, int batchSize, double batchTime, Selector selector) {
 		for(int i = 0; i < maxThreads; i++) {
@@ -38,7 +46,7 @@ public class ThreadPoolManager implements Runnable{
 		this.batchTime = new Double(batchTime * 1000000000).longValue();
 	}
 
-	public static void open(int maxThreads, int batchSize, double batchTime, Selector selector) {
+	static void open(int maxThreads, int batchSize, double batchTime, Selector selector) {
 		if(manager == null) {
 			manager = new ThreadPoolManager(maxThreads, batchSize, batchTime, selector);
 			System.out.println("Successfully started thread pool manager.");
@@ -47,28 +55,45 @@ public class ThreadPoolManager implements Runnable{
 		}
 	}
 
-	public static ThreadPoolManager getInstance() {
+	final void reregister(ServerSocketChannel channel) {
+		try {
+			synchronized(channel) {
+				channel.register(selector, SelectionKey.OP_ACCEPT);
+			}
+		}catch (ClosedChannelException cce) {
+			System.out.println(cce);
+		}
+	}
+
+	static ThreadPoolManager getInstance() {
 		return manager;
 	}
 
-	public void addWork(byte[] work) {
-		synchronized (workPool) {
-			workPool.offer(work);
-		}
-	}
+//	public void addWork(byte[] work) {
+//		synchronized (workPool) {
+//			workPool.offer(work);
+//		}
+//	}
 
-	public final Selector getSelector() { return manager.selector; }
+	final Selector getSelector() { return manager.selector; }
 
-	public void addJob(int type, Channel channel, SelectionKey key) {
+	void addJob(int type, SelectableChannel channel, SelectionKey key) {
 
-		synchronized (acceptedKeys) {
-			if (acceptedKeys.contains(key)) return;
-			else {
-				//if(type == SelectionKey.OP_ACCEPT) System.out.println("Adding Key: " + key);
-				acceptedKeys.add(key);
-			}
-		}
+//		synchronized (acceptedKeys) {
+//			if (acceptedKeys.contains(channel)) return;
+//			else {
+//				//if(type == SelectionKey.OP_ACCEPT) System.out.println("Adding Key: " + key);
+//				acceptedKeys.add(channel);
+//			}
+//		}
 		synchronized (jobKeys) {
+			if(channel instanceof ServerSocketChannel) {
+				LinkedList<Job> connection = new LinkedList<>();
+				isNewConnection = true;
+				connection.push(new Job(type, channel, key));
+				jobKeys.addFirst(connection);
+				return;
+			}
 			if(jobKeys.isEmpty()) jobKeys.push(new LinkedList<Job>());
 			Iterator<LinkedList<Job>> iter = jobKeys.iterator();
 			boolean didAdd = false;
@@ -77,12 +102,13 @@ public class ThreadPoolManager implements Runnable{
 				if(current.size() < batchSize) {
 					current.addLast(new Job(type, channel, key));
 					didAdd = true;
+					break;
 				}
 			}
 			if(!didAdd) {
 				LinkedList<Job> temp = new LinkedList<>();
 				temp.add(new Job(type, channel, key));
-				jobKeys.push(temp);
+				jobKeys.addLast(temp);
 			}
 		}
 	}
@@ -104,15 +130,17 @@ public class ThreadPoolManager implements Runnable{
 	}
 
 	public final void returnThreadToPool(WorkerThread thread) {
+		System.out.println("Returned to pool");
 		threadPool.add(thread);
+
 	}
 
 
-	public final void removeKey(SelectionKey key) {
-		synchronized (acceptedKeys) {
-			this.acceptedKeys.remove(key);
-		}
-	}
+//	public final void removeKey(SelectableChannel channel) {
+//		synchronized (acceptedKeys) {
+//			this.acceptedKeys.remove(channel);
+//		}
+//	}
 
 	public final String logAndReset() {
 		LocalDateTime date = LocalDateTime.now();
@@ -126,7 +154,6 @@ public class ThreadPoolManager implements Runnable{
 			double sent = clientThroughput.get(client).getAndSet(0);
 			differences += Math.pow(sent - mean,2);
 		}
-		logMessage += " Differences " + differences + " ";
 		logMessage += String.format("Std. Dev. of Per-Client Throughput: %.2f messages/s", Math.sqrt(differences / clients.size()) / 20);
 		return logMessage;
 	}
@@ -136,13 +163,16 @@ public class ThreadPoolManager implements Runnable{
 		while(true) {
 			synchronized (jobKeys) {
 				if (jobKeys.isEmpty() || threadPool.isEmpty()) continue;
-				int curSize = jobKeys.peek().size();
+				int curSize = jobKeys.peekFirst().size();
 
 				long time = System.nanoTime();
 				long timeDifferential = time - lastBatchRemoved;
-				if (curSize >= batchSize || timeDifferential > batchTime) {
+				if (curSize >= batchSize || timeDifferential > batchTime || isNewConnection) {
+					//System.out.println("Sending batch: " + curSize);
+					isNewConnection = false;
+					//System.out.println(curSize);
 					WorkerThread worker = threadPool.poll();
-					Task task = new Task(jobKeys.poll());
+					Task task = new Task(jobKeys.pollFirst());
 					worker.notifyAndStart(task);
 					lastBatchRemoved = System.nanoTime();
 				}

@@ -19,7 +19,7 @@ public class SenderThread implements Runnable{
 		String hash = Client.SHA1FromBytes(data);
 		hash = pad(hash, 40);
 		client.addHash(hash);
-
+		//System.err.println("Sent: " + hash);
 		ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 		//System.out.println("Writing to channel: " + hash);
 		client.getSocketChannel().write(dataBuffer);

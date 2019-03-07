@@ -4,23 +4,20 @@ public class WorkerThread extends Thread{
 
 	private volatile Task task = null;
     private volatile boolean taskComplete = true;
-
-	public WorkerThread() {
-
-	}
-
-	public boolean getComplete() { return this.taskComplete; }
+	//public boolean getComplete() { return this.taskComplete; }
 
 	@Override
 	public synchronized void run() {
 		while(true) {
 			if(taskComplete || task == null) {
 				try {
+//					System.out.println("waiting");
 					wait();
 				}catch (InterruptedException ie) {
 					System.out.println("Thread Interrupted");
 				}
 			}else {
+//				System.out.println("Working");
 				task.work();
 				taskComplete = true;
 				ThreadPoolManager.getInstance().returnThreadToPool(this);

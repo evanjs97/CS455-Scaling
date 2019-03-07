@@ -32,9 +32,10 @@ public class Client {
         //
 		socketChannel = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
 		socketChannel.configureBlocking(false);
+
 //		socketChannel.connect(new InetSocketAddress(serverHost, serverPort));
 //		int ops  = socketChannel.validOps();
-		socketChannel.register(selector, SelectionKey.OP_READ);
+		socketChannel.register(selector, SelectionKey.OP_WRITE | SelectionKey.OP_READ);
 	}
 
 //	private void sendData() throws IOException{
@@ -54,7 +55,6 @@ public class Client {
 		while(dataBuffer.hasRemaining() && read != -1) {
 			read = socketChannel.read(dataBuffer);
 		}
-		receivedMessage();
 		return new String(dataBuffer.array());
 	}
 
@@ -99,7 +99,7 @@ public class Client {
 
 	private void runClient() {
 		startTime = System.nanoTime();
-		openSender();
+
 		while(true) {
 			try {
 				int numKeys = selector.selectNow();
@@ -108,16 +108,26 @@ public class Client {
 				while(keys.hasNext()) {
 					SelectionKey key = (SelectionKey) keys.next();
 					if(!key.isValid()) {
-						System.out.println("Not Valid: ");
+						System.out.println("Not Valid Key: ");
 						continue;
 					}
+
 					if(key.isReadable()) {
 						String data = readData(key);
-						if(hashcodes.remove(data)) {
-							//System.out.println("Successfully found hash: " + data);
+						synchronized (hashcodes) {
+							if (hashcodes.remove(data)) {
+								receivedMessage();
+							}
 						}
+
+					}
+					if(key.isWritable()) {
+						System.out.println("Opening Sender");
+						socketChannel.register(selector, SelectionKey.OP_READ);
+						openSender();
 					}
 					keys.remove();
+
 				}
 				long currTime = System.nanoTime();
 				long timeDiff =  (currTime - startTime) / 1000000000;

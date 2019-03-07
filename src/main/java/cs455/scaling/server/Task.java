@@ -15,7 +15,11 @@ public class Task {
 	private LinkedList<Job> jobs;
 	private byte[][] bytes;
 
-	public Task(LinkedList<Job> jobs) {
+	public Task(LinkedList<Job> jobs)
+	{
+//		System.out.print("Task created with: " );
+//		for(Job job : jobs) { System.out.print(job + " --> "); }
+//		System.out.println();
 		this.jobs = jobs;
 	}
 
@@ -27,7 +31,7 @@ public class Task {
 			try {
 				read = client.read(buffer);
 			}catch (IOException ioe) {
-
+				System.out.println("Error while reading");
 			}
 		}
 		return buffer.array();
@@ -42,29 +46,30 @@ public class Task {
 			System.out.println("Exception while writing to client: " + ioe);
 		}
 	}
-
-	private void send(SelectionKey key, byte[] bytes) {
-		SocketChannel client = (SocketChannel) key.channel();
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
-
-		while(buffer.hasRemaining()) {
-			synchronized (client) {
-				try {
-					client.write(buffer);
-				}catch(IOException ioe) {
-
-				}
-			}
-		}
-	}
+//
+//	private void send(SelectionKey key, byte[] bytes) {
+//		SocketChannel client = (SocketChannel) key.channel();
+//		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+//
+//		while(buffer.hasRemaining()) {
+//			synchronized (client) {
+//				try {
+//					client.write(buffer);
+//				}catch(IOException ioe) {
+//
+//				}
+//			}
+//		}
+//	}
 
 	private void registerClient(Job job) {
 		try {
 			SocketChannel client = job.getServerSocketChannel().accept();
 			client.configureBlocking(false);
-			client.register(ThreadPoolManager.getInstance().getSelector(), SelectionKey.OP_READ & ~SelectionKey.OP_ACCEPT);
+			client.register(ThreadPoolManager.getInstance().getSelector(), SelectionKey.OP_READ);
 			ThreadPoolManager.getInstance().registerClient(client.toString());
 			System.out.println("Client has registered with server.");
+			ThreadPoolManager.getInstance().reregister(job.getServerSocketChannel());
 		}catch (IOException ioe) {
 			System.out.println("ERROR: IOException while registering client");
 		}
@@ -80,18 +85,22 @@ public class Task {
 		for(Job job : jobs) {
 			if(job.getType() == SelectionKey.OP_ACCEPT) registerClient(job);
 			else {
+
 				byte[] dataRead = read(job);
 				String hash = SHA1FromBytes(dataRead);
 				hash = pad(hash, 40);
+				System.out.println("Reading and Writing from client: " + hash);
 				write(hash, job);
-//				try {
-					ThreadPoolManager.getInstance().incrementMessageCount(job.getSocketChannel().toString());
-//				}catch (IOException ioe) {
-//					System.out.println("Failed to increment message count for client task");
-//				}
+				ThreadPoolManager.getInstance().incrementMessageCount(job.getSocketChannel().toString());
+				System.out.println("Finished Reading and Writing from Client");
 			}
-
-			ThreadPoolManager.getInstance().removeKey(job.getKey());
+//			ThreadPoolManager.getInstance().reregister(job.getChannel());
+			//ThreadPoolManager.getInstance().removeKey(job.getChannel());
+//			System.out.println("removing key");
+			synchronized (job.getKey()) {
+				job.getKey().attach(null);
+			}
+			System.out.println("Removed key");
 		}
 	}
 
