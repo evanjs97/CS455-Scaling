@@ -25,10 +25,6 @@ public class Job {
 		else return this.type + " Server Socket Channel: " ;
 	}
 
-//	public final SelectableChannel getChannel() {
-//		if(socketChannel == null) return serverSocketChannel;
-//		else return socketChannel;
-//	}
 
 	final SelectionKey getKey() { return this.key; }
 

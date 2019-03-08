@@ -14,8 +14,6 @@ public class ThreadPoolManager implements Runnable{
 	private static ThreadPoolManager manager;
 	private final LinkedBlockingQueue<WorkerThread> threadPool = new LinkedBlockingQueue<>();
 	private final ArrayDeque<LinkedList<Job>> jobKeys = new ArrayDeque<>();
-	//private final ArrayDeque<byte[]> workPool = new ArrayDeque<>();
-	//private final HashSet<SelectableChannel> acceptedKeys = new HashSet<>();
 
 
 	//statistics for server
@@ -131,12 +129,6 @@ public class ThreadPoolManager implements Runnable{
 	}
 
 
-//	public final void removeKey(SelectableChannel channel) {
-//		synchronized (acceptedKeys) {
-//			this.acceptedKeys.remove(channel);
-//		}
-//	}
-
 	final String logAndReset() {
 		LocalDateTime date = LocalDateTime.now();
 		DateTimeFormatter dateFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM);
@@ -164,7 +156,6 @@ public class ThreadPoolManager implements Runnable{
 				long timeDifferential = time - lastBatchRemoved;
 				if (curSize >= batchSize || timeDifferential > batchTime || isNewConnection) {
 					isNewConnection = false;
-					//System.out.println(curSize);
 					WorkerThread worker = threadPool.poll();
 					Task task = new Task(jobKeys.pollFirst());
 					worker.notifyAndStart(task);

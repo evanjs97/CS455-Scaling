@@ -61,7 +61,6 @@ public class Task {
 	}
 
 	void work() {
-		//taskComplete = true;
 		for(Job job : jobs) {
 			if(job.getType() == SelectionKey.OP_ACCEPT) registerClient(job);
 			else {
@@ -78,10 +77,6 @@ public class Task {
 		}
 	}
 
-//	public int numJobs() {
-//		return this.jobs.size();
-//	}
-
 
 	private String SHA1FromBytes(byte[] data) {
 		try {
@@ -94,6 +89,4 @@ public class Task {
 		}
 		return "";
 	}
-
-//	public boolean isComplete() { return this.taskComplete; }
 }
