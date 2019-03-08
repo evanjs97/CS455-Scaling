@@ -26,6 +26,7 @@ public class WorkerThread extends Thread{
 		}
 	}
 
+
 	/**
 	 * this method will assign the workerThread a task and notify it
 	 * @param task the task to assign to the WorkerThread

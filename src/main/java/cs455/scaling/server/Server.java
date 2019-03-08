@@ -49,7 +49,7 @@ public class Server {
 	 * log current client statistics
 	 */
 	private void log() {
-		System.out.println(ThreadPoolManager.getInstance().logAndReset());
+		System.out.println(ThreadPoolManager.getInstance().logWithStats());
 	}
 
 	/**

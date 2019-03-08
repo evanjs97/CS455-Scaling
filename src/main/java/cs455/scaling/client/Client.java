@@ -70,6 +70,11 @@ public class Client {
 		}
 	}
 
+	/**
+	 * Takes a byte array of data, applies the SHA1 hashing algorithm to the data and returns a String representation
+	 * @param data the byte[] to hash
+	 * @return a string representation of hash of data
+	 */
 	static String SHA1FromBytes(byte[] data) {
 		try {
 			MessageDigest digest = MessageDigest.getInstance("SHA1");

@@ -3,7 +3,6 @@ package cs455.scaling.client;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
 import java.util.Random;
 
 public class SenderThread implements Runnable{

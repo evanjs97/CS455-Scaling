@@ -2,20 +2,15 @@ package cs455.scaling.server;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.LinkedList;
 
 public class Task {
-	//private volatile boolean taskComplete = false;
 	private LinkedList<Job> jobs;
-	//private byte[][] bytes;
 
 	Task(LinkedList<Job> jobs)
 	{
@@ -69,7 +64,7 @@ public class Task {
 				String hash = SHA1FromBytes(dataRead);
 				hash = pad(hash, 40);
 				write(hash, job);
-				ThreadPoolManager.getInstance().incrementMessageCount(job.getSocketChannel().toString());
+				ThreadPoolManager.getInstance().receivedMessage(job.getSocketChannel().toString());
 			}
 			synchronized (job.getKey()) {
 				job.getKey().attach(null);
