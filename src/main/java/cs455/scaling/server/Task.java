@@ -2,6 +2,8 @@ package cs455.scaling.server;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -11,15 +13,12 @@ import java.util.Arrays;
 import java.util.LinkedList;
 
 public class Task {
-	private volatile boolean taskComplete = false;
+	//private volatile boolean taskComplete = false;
 	private LinkedList<Job> jobs;
-	private byte[][] bytes;
+	//private byte[][] bytes;
 
-	public Task(LinkedList<Job> jobs)
+	Task(LinkedList<Job> jobs)
 	{
-//		System.out.print("Task created with: " );
-//		for(Job job : jobs) { System.out.print(job + " --> "); }
-//		System.out.println();
 		this.jobs = jobs;
 	}
 
@@ -41,35 +40,16 @@ public class Task {
 		try {
 			ByteBuffer dataBuffer = ByteBuffer.wrap(hash.getBytes());
 			job.getSocketChannel().write(dataBuffer);
-			//System.out.println("Wrote to channel: " + "   " + hash);
 		}catch (IOException ioe) {
 			System.out.println("Exception while writing to client: " + ioe);
 		}
 	}
-//
-//	private void send(SelectionKey key, byte[] bytes) {
-//		SocketChannel client = (SocketChannel) key.channel();
-//		ByteBuffer buffer = ByteBuffer.wrap(bytes);
-//
-//		while(buffer.hasRemaining()) {
-//			synchronized (client) {
-//				try {
-//					client.write(buffer);
-//				}catch(IOException ioe) {
-//
-//				}
-//			}
-//		}
-//	}
 
 	private void registerClient(Job job) {
 		try {
 			SocketChannel client = job.getServerSocketChannel().accept();
 			client.configureBlocking(false);
-			client.register(ThreadPoolManager.getInstance().getSelector(), SelectionKey.OP_READ);
-			ThreadPoolManager.getInstance().registerClient(client.toString());
-			System.out.println("Client has registered with server.");
-			ThreadPoolManager.getInstance().reregister(job.getServerSocketChannel());
+			ThreadPoolManager.getInstance().registerClient(client);
 		}catch (IOException ioe) {
 			System.out.println("ERROR: IOException while registering client");
 		}
@@ -80,8 +60,8 @@ public class Task {
 		return hash;
 	}
 
-	public void work() {
-		taskComplete = true;
+	void work() {
+		//taskComplete = true;
 		for(Job job : jobs) {
 			if(job.getType() == SelectionKey.OP_ACCEPT) registerClient(job);
 			else {
@@ -89,24 +69,18 @@ public class Task {
 				byte[] dataRead = read(job);
 				String hash = SHA1FromBytes(dataRead);
 				hash = pad(hash, 40);
-				System.out.println("Reading and Writing from client: " + hash);
 				write(hash, job);
 				ThreadPoolManager.getInstance().incrementMessageCount(job.getSocketChannel().toString());
-				System.out.println("Finished Reading and Writing from Client");
 			}
-//			ThreadPoolManager.getInstance().reregister(job.getChannel());
-			//ThreadPoolManager.getInstance().removeKey(job.getChannel());
-//			System.out.println("removing key");
 			synchronized (job.getKey()) {
 				job.getKey().attach(null);
 			}
-			System.out.println("Removed key");
 		}
 	}
 
-	public int numJobs() {
-		return this.jobs.size();
-	}
+//	public int numJobs() {
+//		return this.jobs.size();
+//	}
 
 
 	private String SHA1FromBytes(byte[] data) {
@@ -121,5 +95,5 @@ public class Task {
 		return "";
 	}
 
-	public boolean isComplete() { return this.taskComplete; }
+//	public boolean isComplete() { return this.taskComplete; }
 }

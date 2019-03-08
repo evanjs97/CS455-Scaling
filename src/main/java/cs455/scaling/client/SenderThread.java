@@ -2,6 +2,8 @@ package cs455.scaling.client;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 import java.util.Random;
 
 public class SenderThread implements Runnable{
@@ -19,10 +21,12 @@ public class SenderThread implements Runnable{
 		String hash = Client.SHA1FromBytes(data);
 		hash = pad(hash, 40);
 		client.addHash(hash);
-		//System.err.println("Sent: " + hash);
 		ByteBuffer dataBuffer = ByteBuffer.wrap(data);
-		//System.out.println("Writing to channel: " + hash);
-		client.getSocketChannel().write(dataBuffer);
+		SocketChannel channel = client.getSocketChannel();
+		while(dataBuffer.hasRemaining()) {
+			channel.write(dataBuffer);
+		}
+
 		client.sentMessage();
 	}
 

@@ -2,6 +2,7 @@ package cs455.scaling.client;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -24,27 +25,25 @@ public class Client {
 	private long startTime;
 	private final ClientStatistics statistics = new ClientStatistics();
 
+	/**
+	 * Client constructor creates client socket channel, connects it to server and registers it with selector
+	 * @param serverHost the name of the server to connect to
+	 * @param serverPort the port to connect over
+	 * @param messageRate the number of messages to send per second to the server
+	 * @throws IOException if socket channel opening fails
+	 */
 	private Client(String serverHost, int serverPort, int messageRate) throws IOException{
 		this.serverHost = serverHost;
 		this.serverPort = serverPort;
 		this.messageRate = messageRate;
 		selector = Selector.open();
-        //
 		socketChannel = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
 		socketChannel.configureBlocking(false);
-
-//		socketChannel.connect(new InetSocketAddress(serverHost, serverPort));
-//		int ops  = socketChannel.validOps();
+		InetSocketAddress address = (InetSocketAddress) socketChannel.getLocalAddress();
+		System.out.println("Client started on " + address.getHostName() + ":" + address.getPort());
 		socketChannel.register(selector, SelectionKey.OP_WRITE | SelectionKey.OP_READ);
 	}
 
-//	private void sendData() throws IOException{
-//		try {
-//			writeData();
-//		}catch(InterruptedException ie) {
-//
-//		}
-//	}
 
 	void sentMessage() { statistics.sendMessage(); }
 	private void receivedMessage() { statistics.receivedMessage(); }
@@ -55,17 +54,9 @@ public class Client {
 		while(dataBuffer.hasRemaining() && read != -1) {
 			read = socketChannel.read(dataBuffer);
 		}
-		return new String(dataBuffer.array());
-	}
-
-	private String bufferHash(ByteBuffer buffer) {
-		buffer.rewind();
-		String hash = SHA1FromBytes(buffer.array());
-		return hash;
-	}
-
-	private static boolean compareHashes(String hash1, String hash2) {
-		return hash1.equals(hash2);
+		String data = new String(dataBuffer.array());
+		if(data.length() < 40) System.out.println("Failure: Data read is: " + data.length());
+		return data;
 	}
 
 	final SocketChannel getSocketChannel() {
@@ -99,10 +90,9 @@ public class Client {
 
 	private void runClient() {
 		startTime = System.nanoTime();
-
 		while(true) {
 			try {
-				int numKeys = selector.selectNow();
+				int numKeys = selector.select();
 				if(numKeys == 0) continue;
 				Iterator keys = selector.selectedKeys().iterator();
 				while(keys.hasNext()) {
@@ -126,9 +116,11 @@ public class Client {
 						socketChannel.register(selector, SelectionKey.OP_READ);
 						openSender();
 					}
+
 					keys.remove();
 
 				}
+				selector.selectedKeys().clear();
 				long currTime = System.nanoTime();
 				long timeDiff =  (currTime - startTime) / 1000000000;
 				if(timeDiff >= 20) {
@@ -153,6 +145,10 @@ public class Client {
 				System.out.println("Starting up client: Connecting to server " + serverHost + " on port " + serverPort);
 				Client client = new Client(serverHost, serverPort, messageRate);
 				while(!client.getSocketChannel().isConnected()){}
+				try {
+					Thread.sleep(1000);
+				}catch (InterruptedException ie) {}
+				System.out.println("Connected");
 				client.runClient();
 			}catch(NumberFormatException nfe) {
 				System.out.println("Error while parsing arguments: " + nfe);

@@ -8,7 +8,7 @@ public class Job {
 	private final ServerSocketChannel serverSocketChannel;
 	private final SelectionKey key;
 
-	public Job(int type, SelectableChannel channel, SelectionKey key) {
+	Job(int type, SelectableChannel channel, SelectionKey key) {
 		this.type = type;
 		if(channel instanceof SocketChannel) {
 			this.socketChannel = (SocketChannel) channel;
@@ -25,10 +25,10 @@ public class Job {
 		else return this.type + " Server Socket Channel: " ;
 	}
 
-	public final SelectableChannel getChannel() {
-		if(socketChannel == null) return serverSocketChannel;
-		else return socketChannel;
-	}
+//	public final SelectableChannel getChannel() {
+//		if(socketChannel == null) return serverSocketChannel;
+//		else return socketChannel;
+//	}
 
 	final SelectionKey getKey() { return this.key; }
 

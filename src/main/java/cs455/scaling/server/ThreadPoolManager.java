@@ -34,6 +34,9 @@ public class ThreadPoolManager implements Runnable{
 	//used to immediately register new clients (avoid waiting batchTime)
 	private boolean isNewConnection = false;
 
+	private SocketChannel toRegister = null;
+//	private ServerSocketChannel serverRegister = null;
+
 	private ThreadPoolManager(int maxThreads, int batchSize, double batchTime, Selector selector) {
 		for(int i = 0; i < maxThreads; i++) {
 			WorkerThread worker = new WorkerThread();
@@ -69,23 +72,10 @@ public class ThreadPoolManager implements Runnable{
 		return manager;
 	}
 
-//	public void addWork(byte[] work) {
-//		synchronized (workPool) {
-//			workPool.offer(work);
-//		}
-//	}
-
 	final Selector getSelector() { return manager.selector; }
 
 	void addJob(int type, SelectableChannel channel, SelectionKey key) {
 
-//		synchronized (acceptedKeys) {
-//			if (acceptedKeys.contains(channel)) return;
-//			else {
-//				//if(type == SelectionKey.OP_ACCEPT) System.out.println("Adding Key: " + key);
-//				acceptedKeys.add(channel);
-//			}
-//		}
 		synchronized (jobKeys) {
 			if(channel instanceof ServerSocketChannel) {
 				LinkedList<Job> connection = new LinkedList<>();
@@ -113,24 +103,29 @@ public class ThreadPoolManager implements Runnable{
 		}
 	}
 
-//	//private WorkerThread getThreadIfAvailable() {
-//		return threadPool.poll();
-//	}
-
-	public final void registerClient(String client) {
-		clients.add(client);
-		clientThroughput.put(client, new AtomicInteger());
+	final SocketChannel getToRegister() {
+		return this.toRegister;
 	}
 
-	public final void incrementMessageCount(String client) {
+	final void resetToRegister() {
+		toRegister = null;
+	}
+
+	final void registerClient(SocketChannel client) {
+		clients.add(client.toString());
+		clientThroughput.put(client.toString(), new AtomicInteger());
+		toRegister = client;
+		selector.wakeup();
+	}
+
+	final void incrementMessageCount(String client) {
 		synchronized (clientThroughput) {
 			clientThroughput.get(client).incrementAndGet();
 		}
 		messagesSinceLastLog.incrementAndGet();
 	}
 
-	public final void returnThreadToPool(WorkerThread thread) {
-		System.out.println("Returned to pool");
+	final void returnThreadToPool(WorkerThread thread) {
 		threadPool.add(thread);
 
 	}
@@ -142,7 +137,7 @@ public class ThreadPoolManager implements Runnable{
 //		}
 //	}
 
-	public final String logAndReset() {
+	final String logAndReset() {
 		LocalDateTime date = LocalDateTime.now();
 		DateTimeFormatter dateFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM);
 		double total = messagesSinceLastLog.getAndSet(0);
@@ -168,7 +163,6 @@ public class ThreadPoolManager implements Runnable{
 				long time = System.nanoTime();
 				long timeDifferential = time - lastBatchRemoved;
 				if (curSize >= batchSize || timeDifferential > batchTime || isNewConnection) {
-					//System.out.println("Sending batch: " + curSize);
 					isNewConnection = false;
 					//System.out.println(curSize);
 					WorkerThread worker = threadPool.poll();

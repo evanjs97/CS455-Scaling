@@ -5,10 +5,10 @@ TEST_HOME="$( cd "$( dirname "$0" )" && pwd )"
 SERVER="santa-fe"
 PORT="3007"
 NUM_THREADS="50"
-BATCH_SIZE="10"
+BATCH_SIZE="20"
 BATCH_TIME="2"
-MESSAGE_RATE="5"
-CLIENTS_PER_MACHINE=1
+MESSAGE_RATE="10"
+CLIENTS_PER_MACHINE=10
 
 gnome-terminal --geometry=132x43 -e "ssh -t ${SERVER} 'cd ${TEST_HOME}/build/classes/java/main; java cs455.scaling.server.Server ${PORT} ${NUM_THREADS} ${BATCH_SIZE} ${BATCH_TIME};bash;'"
 
