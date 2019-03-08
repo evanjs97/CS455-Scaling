@@ -12,10 +12,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 
 
 public class Client {
-	private final HashSet<String> hashcodes = new HashSet<>();
+	private final LinkedList<String> hashcodes = new LinkedList<>();
+//	private final HashSet<String> hashcodes = new HashSet<>();
 	private final String serverHost;
 	private final int serverPort;
 	private final int messageRate;
@@ -66,7 +68,7 @@ public class Client {
 
 	final void addHash(String hash) {
 		synchronized (hashcodes) {
-			this.hashcodes.add(hash);
+			this.hashcodes.addLast(hash);
 		}
 	}
 
